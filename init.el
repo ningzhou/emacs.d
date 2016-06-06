@@ -39,6 +39,9 @@
   (require 'init-compat)
   (require 'init-utils)
   (require 'init-site-lisp) ;; Must come before elpa, as it may provide package.el
+  ;;osx configuration
+  (when (eq system-type 'darwin)
+    (require 'init-osx))
 
   ;; Windows configuration, assuming that cygwin is installed at "c:/cygwin"
   ;; (condition-case nil
@@ -120,7 +123,7 @@
   ;; comment below line if you want to setup color theme in your own way
   (if (or (display-graphic-p) (string-match-p "256color"(getenv "TERM"))) (require 'init-color-theme))
 
-  (require 'init-emacs-w3m)
+  ;;(require 'init-emacs-w3m)
   (require 'init-hydra)
 
   ;; {{ idle require other stuff

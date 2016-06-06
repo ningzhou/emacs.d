@@ -188,4 +188,56 @@
                        (diff-region-exit-from-certain-buffer ,buffer-name)))
       )))
 ;; }}
+
+(defvar readonly-mode-list '("Image[jpeg]" "Image[gif]"))
+(add-hook 'write-file-hooks 'auto-update-file-fields)
+(defun auto-update-file-fields ()
+  "Update fields in file, such as filename, time-stamp, etc
+   Sample:
+    - filename format:
+    # File : init-utils.el"
+  (interactive)
+  (unless (member mode-name readonly-mode-list)
+    (save-excursion
+      (save-restriction
+        (let ((file-name-regexp (concat "\\(\\file *\\)\\([^" " " "
+]*\\) *"))
+              (max-lines 15)
+              (beg (point-min)) end
+              )
+          (goto-char (point-min))
+          (forward-line max-lines)
+          (setq end (point))
+          (narrow-to-region beg end)
+          (goto-char (point-min))
+          ;; Verify looking at a file name for this mode.
+          (while (re-search-forward file-name-regexp nil t)
+            (goto-char (match-beginning 2))
+            (delete-region (match-beginning 2) (match-end 2))
+            (insert (file-name-nondirectory (buffer-file-name)))
+            ))
+        )))
+)
+
+;;----------auto update time-stamp----------
+(add-hook 'before-save-hook 'time-stamp)
+(setq time-stamp-pattern "Time-stamp: <%04y-%02m-%02d %02H:%02M:%02S>")
+(setq time-stamp-line-limit 20)
+
+;; --------------------set time-stamp-format, when auto saving--------------------
+(setq time-stamp-format "%:y-%02m-%02d %02H:%02M:%02S")
+;; hook emacs behaviour, before saving
+(add-hook 'before-save-hook
+          '(lambda ()
+             ;; If the file path doesn't exist, create it, including any parent directories.
+             (or (file-exists-p (file-name-directory buffer-file-name))
+                 (make-directory (file-name-directory buffer-file-name) t))
+             ;; ;; Remove trailing whitespace  ;; TODO
+             ;; (unless (member mode-name readonly-mode-list)
+             ;;   (delete-trailing-whitespace))
+             ;; Auto update timestamp for some specific files
+             (unless (member (file-name-extension (buffer-name)) '("org"))
+               (time-stamp))))
+
+
 (provide 'init-utils)

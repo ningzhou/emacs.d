@@ -229,4 +229,107 @@
                    (rename-buffer
                     (format "*w3m: %s*"
                             (substring title 0 (min 50 (length title)))) t))))))
+
+;; search and browse using system default web browser
+(require 'webjump)
+(setq webjump-sites
+      '(
+        ;; search engine
+        ("google" . [simple-query "www.google.com" "www.google.com/search?q=" ""])
+        ("baidu" . [simple-query "www.baidu.com" "www.baidu.com/s?wd=" ""])
+        ("bing" . [simple-query "cn.bing.com" "cn.bing.com/search?q=" ""])
+        ("gist" . [simple-query "gist.github.com" "gist.github.com/gists/search?q=" ""])
+        ;;("google" . [simple-query "www.google.com" "203.208.46.146/search?q=" ""])
+        ("duckduckgo" . [simple-query "duckduckgo.com" "duckduckgo.com/?q=" ""])
+        ("yahoo" . [simple-query "au.search.yahoo.com" "au.search.yahoo.com/yhs/search?p=" ""])
+        ("iciba" . [simple-query "www.iciba.com" "www.iciba.com/" ""])
+        ("wiki" . [simple-query "en.wikipedia.org" "en.wikipedia.org/w/index.php?search=" ""])
+        ;; --8<------------------ search engine ------------------------>8--
+
+        ;; --8<------------------ ebook ------------------------>8--
+        ("book-shupeng" . [simple-query "www.shupeng.com" "www.shupeng.com/search/" ""])
+        ("book-coay" . [simple-query "www.coay.com" "www.coay.com/search.php?key=" ""])
+        ("book-wenku" . [simple-query "wenku.baidu.com" "wenku.baidu.com/search?word=" ""])
+        ("book-iask" . [simple-query "ishare.iask.sina.com.cn" "ishare.iask.sina.com.cn/search.php?key=" ""])
+        ("book-douban" . [simple-query "book.douban.com" "book.douban.com/subject_search?cat=1001&search_text=" ""])
+        ("book-yinian" . "www.inien.com/w/#/Index")
+        ("book-ppurl" . [simple-query "www.ppurl.com" "www.ppurl.com/" ""])
+        ;; --8<------------------ ebook ------------------------>8--
+
+        ;; --8<------------------ paper ------------------------>8--
+        ("paper-citeseerx" . [simple-query "citeseerx.ist.psu.edu" "citeseerx.ist.psu.edu/search?submit=Search&sort=rel&q=" ""])
+        ;; --8<------------------ paper ------------------------>8--
+
+        ;; --8<------------------ life ------------------------>8--
+        ;;TODO: keyword need to be escaped
+        ("taobao" . [simple-query "www.taobao.com" "s.taobao.com/search?q=" ""])
+        ("movie-douban" . [simple-query "movie.douban.com" "movie.douban.com/subject_search?cat=1002&search_text=" ""])
+        ("music-douban" . [simple-query "music.douban.com" "music.douban.com/subject_search?cat=1003&search_text=" ""])
+        ;; --8<------------------ life ------------------------>8--
+
+        ;; --8<------------------ emacs ------------------------>8--
+        ("emacswiki" . [simple-query "www.emacswiki.org/emacs" "www.google.com/cse?cx=004774160799092323420%3A6-ff2s0o6yi&sa=Search&siteurl=www.emacswiki.org%2Femacs%2F&q=" ""])
+        ;; --8<------------------ emacs ------------------------>8--
+
+        ;; --8<------------------ programming ------------------------>8--
+        ("linux apps" . "www.appwatch.com/Linux/")
+        ("erlang manual" . "www.erlang.org/doc/man/erlang.html")
+        ;; --8<------------------ personal ------------------------>8--
+
+        ;; --8<------------------ misc ------------------------>8--
+        ("slideshare" . "www.slideshare.net")
+        ;; --8<------------------ misc ------------------------>8--
+        ))
+;; --8<-------------------------- separator ------------------------>8--
+;; C-u super j: browse webjump link in the way of w3m, instead of default web browser
+(defun webjump (use-w3m-p)
+  "The behaviour is different from standard webjump in the following:
+ - Users can input web host and search keyword in a single inpute, instead of two
+ - User can choose whether to view link in w3m or not, by given the use-w3m-p parameter
+ - Set the default web host as google
+ - The matching of web host is case insensitive
+ "
+  (interactive "P")
+  (let* ((completion-ignore-case t) user-input
+         search-engine search-keywords item name expr)
+    ;; read customer input for search engine and search keywords, like "google emacs webjump"
+    (make-local-variable 'minibuffer-local-completion-map)
+    (define-key minibuffer-local-completion-map " " nil)
+    (setq user-input (split-string
+                      (completing-read "WebJump to site: " webjump-sites nil nil "google ")
+                      " "))
+    (setq search-engine (car user-input))
+    (setq search-keywords (mapconcat #'identity
+                                     (cdr user-input) " "))
+    (setq item (assoc-string search-engine webjump-sites nil))
+    (setq name (car item))
+    (setq expr (cdr item))
+    (when use-w3m-p
+      (make-local-variable 'browse-url-browser-function)
+      (setq browse-url-browser-function 'w3m-browse-url))
+    (browse-url (webjump-url-fix
+                 (cond ((not expr) "")
+                       ((stringp expr) expr)
+                       ((vectorp expr) (webjump-builtin-keywords expr name search-keywords))
+                       ((listp expr) (eval expr))
+                       ((symbolp expr)
+                        (if (fboundp expr)
+                            (funcall expr name)
+                          (error "WebJump URL function \"%s\" undefined"
+                                 expr)))
+                       (t (error "WebJump URL expression for \"%s\" invalid"
+                                 name)))))))
+
+(defun webjump-builtin-keywords (expr name &optional keywords)
+  "If keywords are given, no need to ask users' input"
+  (if (and keywords (not (string-equal keywords "")))
+      (concat (aref expr 2) (webjump-url-encode keywords) (aref expr 3))
+    (webjump-builtin expr name)))
+;; --8<-------------------------- separator ------------------------>8--
+;;(setq browse-url-generic-program "/usr/bin/firefox")
+;;set google chrome as the default brower
+(setq browse-url-browser-function 'browse-url-generic
+      browse-url-generic-program "google-chrome")
+
+
 (provide 'init-emacs-w3m)
